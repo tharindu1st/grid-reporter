@@ -1,0 +1,4 @@
+[ballerina.log]
+level = "DEBUG"
+[ballerina.http]
+traceLogConsole = true
