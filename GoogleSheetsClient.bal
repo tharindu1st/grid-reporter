@@ -1,3 +1,5 @@
+import ballerina/regex;
+import ballerina/log;
 import ballerinax/googleapis.sheets as sheets;
 
 public class GoogleSheetClient {
@@ -14,7 +16,8 @@ public class GoogleSheetClient {
         self.spreadsheetClient = check new (spreadsheetConfig);
     }
     function appendRowToSheet(AggregatedDay 'record) returns error? {
-        string sheetName = "records-" + 'record.day.substring(0, 6);
+        string[] split = regex:split('record.day, "-");
+        string sheetName = "records-" + split[0] + "-" + split[1];
         sheets:Spreadsheet|error spreadSheet = self.spreadsheetClient->openSpreadsheetByUrl(credentials.spreadSheetUrl);
         if spreadSheet is sheets:Spreadsheet {
             sheets:Sheet|error sheet = self.spreadsheetClient->getSheetByName(spreadSheet.spreadsheetId, sheetName);
@@ -23,6 +26,8 @@ public class GoogleSheetClient {
                 _ = check self.spreadsheetClient->appendRowToSheet(spreadSheet.spreadsheetId, sheetName, ["Date", "Total0To9", "Total9To0", "GridTotal0to9", "GridTotal9To0"], (), sheets:USER_ENTERED);
             }
             check self.spreadsheetClient->appendRowToSheet(spreadSheet.spreadsheetId, sheetName, ['record.day, 'record.total0to9Inv, 'record.total9to0Inv, 'record.total0to9Main, 'record.total9to0Main], (), sheets:USER_ENTERED);
+        } else {
+            log:printError("Error while opening spreadsheet", spreadSheet);
         }
     }
 }

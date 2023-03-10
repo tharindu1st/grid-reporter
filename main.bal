@@ -2,6 +2,7 @@ import ballerina/io;
 import ballerina/regex;
 import ballerina/lang.array;
 // import ballerina/file;
+import ballerina/log;
 import ballerina/time;
 
 // import ballerina/file;
@@ -16,6 +17,20 @@ type EnergyRecord record {
 };
 
 public function main() returns error? {
+    DessClient dessClient = check new;
+    _ = check dessClient.login(username, password);
+    GoogleSheetClient googleSheetClient = check new;
+    time:Utc utcNow = time:utcNow();
+    time:Civil civilTime = getPreviosDay(time:utcToCivil(utcNow));
+    string formattedDate = civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString();
+    log:printInfo("Retrieving data for " + formattedDate);
+    AggregatedDay aggregatedRecord = check retrieveAggregatedDayResponse(dessClient, formattedDate);
+    log:printInfo("Publishing data for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString());
+    _ = check googleSheetClient.appendRowToSheet(aggregatedRecord);
+    log:printInfo("Publishing End for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString());
+}
+
+function retrieveAggregatedDayResponse(DessClient dessClient, string formattedDate) returns AggregatedDay|error {
     decimal startingWattage0To9Main = 0;
     decimal startingWattage9To0Main = 0;
     decimal total0to9Main = 0;
@@ -29,19 +44,12 @@ public function main() returns error? {
     decimal endingWattage0To9Inv = 0;
     decimal endingWattage9TO0Inv = 0;
 
-    DessClient dessClient = check new;
-    _ = check dessClient.login(username, password);
-    GoogleSheetClient googleSheetClient = check new;
-    time:Utc utcNow = time:utcNow();
-    time:Civil civilTime = time:utcToCivil(utcNow);
-    string formattedDate = civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString();
     RawData[] rawData = check dessClient.retrieveAllDailyRecoreds(formattedDate);
     EnergyCSVRecord[] energyRecords = [];
     foreach RawData item in rawData {
         EnergyCSVRecord energeyRecord = check convertFromRawtoEnergyRecord(item);
         energyRecords.push(energeyRecord);
     }
-    time:Civil day = check convertTimeStampStringTodecimal(energyRecords[0].time);
     EnergyRecord[] formatedRecords = [];
     foreach EnergyCSVRecord energyRecord in energyRecords {
         string time = energyRecord.time;
@@ -157,9 +165,8 @@ public function main() returns error? {
             index9to0 += 1;
         }
     }
-    string date = day.year.toString() + "-" + day.month.toString() + "-" + day.day.toString();
-    AggregatedDay aggregatedRecord = {day: date, total0to9Inv: total0to9Inv, total0to9Main: total0to9Main, total9to0Inv: total9to0Inv, total9to0Main: total9to0Main};
-    _ = check googleSheetClient.appendRowToSheet(aggregatedRecord);
+    AggregatedDay aggregatedRecord = {day: formattedDate, total0to9Inv: total0to9Inv, total0to9Main: total0to9Main, total9to0Inv: total9to0Inv, total9to0Main: total9to0Main};
+    return aggregatedRecord;
 }
 
 public type AggregatedDay record {|
@@ -188,4 +195,31 @@ public function convertTimeStampStringTodecimal(string timestamp) returns time:C
         minutes: 30
     };
     return utcValue;
+}
+
+public function getPreviosDay(time:Civil day) returns time:Civil {
+
+    if day.day == 1 {
+        if day.month == 1 {
+            day.year = day.year - 1;
+            day.month = 12;
+            day.day = 31;
+        } else {
+            day.month = day.month - 1;
+            if day.month == 1 || day.month == 3 || day.month == 5 || day.month == 7 || day.month == 8 || day.month == 10 || day.month == 12 {
+                day.day = 31;
+            } else if day.month == 4 || day.month == 6 || day.month == 9 || day.month == 11 {
+                day.day = 30;
+            } else {
+                if day.year % 4 == 0 {
+                    day.day = 29;
+                } else {
+                    day.day = 28;
+                }
+            }
+        }
+    } else {
+        day.day = day.day - 1;
+    }
+    return day;
 }
