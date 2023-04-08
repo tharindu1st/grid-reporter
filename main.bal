@@ -22,12 +22,39 @@ public function main() returns error? {
     GoogleSheetClient googleSheetClient = check new;
     time:Utc utcNow = time:utcNow();
     time:Civil civilTime = getPreviosDay(time:utcToCivil(utcNow));
-    string formattedDate = civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString();
-    log:printInfo("Retrieving data for " + formattedDate);
-    AggregatedDay aggregatedRecord = check retrieveAggregatedDayResponse(dessClient, formattedDate);
-    log:printInfo("Publishing data for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString());
-    _ = check googleSheetClient.appendRowToSheet(aggregatedRecord);
-    log:printInfo("Publishing End for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString());
+    if month {
+        int daysOfMonth = getDaysOfMonth(civilTime.year, civilTime.month);
+        foreach int day in 1 ... daysOfMonth {
+            string formattedDate = civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + day.toString();
+            log:printInfo("Retrieving data for " + formattedDate);
+            AggregatedDay aggregatedRecord = check retrieveAggregatedDayResponse(dessClient, formattedDate);
+            log:printInfo("Publishing data for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + day.toString());
+            _ = check googleSheetClient.appendRowToSheet(aggregatedRecord);
+            log:printInfo("Publishing End for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + day.toString());
+        }
+    } else {
+        string formattedDate = civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString();
+        log:printInfo("Retrieving data for " + formattedDate);
+        AggregatedDay aggregatedRecord = check retrieveAggregatedDayResponse(dessClient, formattedDate);
+        log:printInfo("Publishing data for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString());
+        _ = check googleSheetClient.appendRowToSheet(aggregatedRecord);
+        log:printInfo("Publishing End for " + civilTime.year.toString() + "-" + civilTime.month.toString() + "-" + civilTime.day.toString());
+    }
+}
+
+function getDaysOfMonth(int year, int month) returns int {
+    if month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12 {
+        return 31;
+    } else if month == 4 || month == 6 || month == 9 || month == 11 {
+        return 30;
+    } else if month == 2 {
+        if year % 4 == 0 {
+            return 29;
+        } else {
+            return 28;
+        }
+    }
+    return -1;
 }
 
 function retrieveAggregatedDayResponse(DessClient dessClient, string formattedDate) returns AggregatedDay|error {

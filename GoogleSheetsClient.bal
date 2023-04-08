@@ -23,9 +23,9 @@ public class GoogleSheetClient {
             sheets:Sheet|error sheet = self.spreadsheetClient->getSheetByName(spreadSheet.spreadsheetId, sheetName);
             if sheet is error {
                 _ = check self.spreadsheetClient->addSheet(spreadSheet.spreadsheetId, sheetName);
-                _ = check self.spreadsheetClient->appendRowToSheet(spreadSheet.spreadsheetId, sheetName, ["Date", "Total0To9", "Total9To0", "GridTotal0to9", "GridTotal9To0"], (), sheets:USER_ENTERED);
+                _ = check self.spreadsheetClient->appendRowToSheet(spreadSheet.spreadsheetId, sheetName, ["Date", "Total0To9", "Total9To0", "GridTotal0to9", "GridTotal9To0","Total"], (), sheets:USER_ENTERED);
             }
-            check self.spreadsheetClient->appendRowToSheet(spreadSheet.spreadsheetId, sheetName, ['record.day, 'record.total0to9Inv, 'record.total9to0Inv, 'record.total0to9Main, 'record.total9to0Main], (), sheets:USER_ENTERED);
+            check self.spreadsheetClient->appendRowToSheet(spreadSheet.spreadsheetId, sheetName, ['record.day, 'record.total0to9Inv, 'record.total9to0Inv, 'record.total0to9Main, 'record.total9to0Main,'record.total0to9Main+'record.total9to0Main], "A:F", sheets:USER_ENTERED);
         } else {
             log:printError("Error while opening spreadsheet", spreadSheet);
         }
